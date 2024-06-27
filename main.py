@@ -1,12 +1,9 @@
-#script for 1 user_id and a whole bunch of proxies
-
 import asyncio
 import random
 import ssl
 import json
 import time
 import uuid
-import requests
 from loguru import logger
 from websockets_proxy import Proxy, proxy_connect
 from fake_useragent import UserAgent
@@ -28,7 +25,7 @@ async def connect_to_wss(socks5_proxy, user_id):
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
-            uri = "wss://proxy.wynd.network:4444/" #4650
+            uri = "wss://proxy.wynd.network:4444/"
             server_hostname = "proxy.wynd.network"
             proxy = Proxy.from_url(socks5_proxy)
             async with proxy_connect(uri, proxy=proxy, ssl=ssl_context, server_hostname=server_hostname,
@@ -76,19 +73,22 @@ async def connect_to_wss(socks5_proxy, user_id):
 
 
 async def main():
-    #find user_id on the site in conlose localStorage.getItem('userId') (if you can't get it, write allow pasting)
-    _user_id = input('Please Enter your user ID: ')
-    #put the proxy in a file in the format socks5://username:password@ip:port or socks5://ip:port
-    r = requests.get("https://github.com/monosans/proxy-list/raw/main/proxies/http.txt", stream=True)
-    if r.status_code == 200:
-        with open('http.txt', 'wb') as f:
-            for chunk in r:
-                f.write(chunk)
-        with open('http.txt', 'r') as file:
-                socks5_proxy_list = file.read().splitlines()
+    with open('user.txt', 'r') as file:
+        user_ids = file.read().splitlines()
+        
+    # Read proxies from file
+    with open('proxy.txt', 'r') as file:
+        proxies = file.read().splitlines()
     
-    tasks = [asyncio.ensure_future(connect_to_wss('http://'+i, _user_id)) for i in socks5_proxy_list]
+    # Create tasks for each proxy and user_id combination
+    tasks = []
+    for proxy in proxies:
+        for user_id in user_ids:
+            tasks.append(asyncio.ensure_future(connect_to_wss(proxy, user_id)))
+    
+    # Execute tasks concurrently
     await asyncio.gather(*tasks)
+
 
 
 if __name__ == '__main__':
